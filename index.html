@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#eff7ff">
-  <title>Калькулятор CFO на аутсорсе | Коркина</title>
+  <title>Калькулятор CFO на аутсорсе | Маюрова Анна «Финансы и стратегия»</title>
 
   <!-- ПРАЙС И НАСТРОЙКИ. Суммы в рублях. Чтобы обновить цены, измените числа в этом блоке и сохраните файл. -->
   <script>
@@ -33,6 +33,7 @@
     // Если у пакета указаны min и max, цена для 2–3 точек равна середине диапазона.
     // Для Advanced скидка применяется к фиксированной части за оплаченные вперёд месяцы.
     const prepaymentDiscounts = { 1: 0, 3: 5, 6: 10 };
+    const vatRatePercent = 22; // Ставка для режима «С НДС». По умолчанию выбран режим «Без НДС».
     const forecastSettings = { growthStartMonth: 3, defaultGrowthPercent: 5, maxMonths: 36 };
   </script>
 
@@ -65,7 +66,9 @@
     .wrap { width: min(100% - 2rem, 76rem); margin-inline: auto; }
     .hero { background: linear-gradient(115deg, #f9fcff 0%, #e5f3ff 65%, #d4e9ff 100%); border-bottom: 1px solid var(--line); }
     .hero-inner { padding-block: 1.4rem 2.65rem; }
-    .brand { display: flex; align-items: center; gap: .7rem; width: fit-content; }
+    .hero-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .35rem 1rem; }
+    .brand { display: flex; align-items: center; gap: .7rem; min-width: 0; max-width: 100%; }
+    .brand-phone { display: inline-flex; align-items: center; min-height: 3rem; font-weight: 700; color: var(--blue-dark); text-underline-offset: .2em; }
     .brand-icon { width: 2.25rem; height: 2.25rem; border-radius: .7rem; display: flex; align-items: end; justify-content: center; gap: .15rem; padding: .58rem; background: var(--blue); }
     .brand-icon i { width: .23rem; border-radius: .15rem; height: .48rem; background: #fff; }
     .brand-icon i:nth-child(2) { height: .72rem; }
@@ -98,6 +101,7 @@
     .payment-group { margin-top: 1.15rem; }
     .payment-group legend, .location-group legend { margin-bottom: .5rem; font-weight: 700; font-size: .94rem; }
     .payment-options, .location-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
+    .vat-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .55rem; }
     .payment-option { position: relative; display: flex; align-items: flex-start; gap: .45rem; padding: .65rem .55rem; border: 1px solid var(--line); border-radius: .7rem; font-size: .88rem; cursor: pointer; }
     .payment-option:has(input:checked) { background: #e9f2ff; border-color: #91aef8; }
     .payment-option strong, .payment-option small { display: block; }
@@ -105,7 +109,7 @@
     .location-option { min-height: 2.75rem; align-items: center; }
     .location-option input { margin-top: 0; }
     .summary { position: sticky; top: 1rem; max-height: calc(100dvh - 2rem); overflow: auto; scroll-margin-top: 1rem; }
-    .package { padding: .85rem 1rem; margin-top: .9rem; border-radius: .85rem; background: var(--sky); }
+    .package { padding: .85rem 1rem; margin-top: .9rem; border-radius: .85rem; background: var(--sky); overflow-wrap: anywhere; }
     .package strong { display: block; color: #143da0; font-size: 1.3rem; line-height: 1.2; }
     .package p { margin-top: .28rem; font-size: .91rem; }
     .package .hint { font-size: .84rem; }
@@ -233,9 +237,12 @@
 <body>
   <header class="hero">
     <div class="wrap hero-inner">
-      <div class="brand">
-        <span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span>
-        <div><strong>Коркина</strong><small>Финансы и стратегия</small></div>
+      <div class="hero-top">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+          <div><strong>Маюрова Анна</strong> <small>«Финансы и стратегия»</small></div>
+        </div>
+        <a class="brand-phone" href="tel:+79638455955">+79638455955</a>
       </div>
       <h1>Калькулятор стоимости CFO на аутсорсе</h1>
       <p class="hero-note">Выберите финансовые инструменты для вашего бизнеса. Калькулятор подберёт пакет и покажет стоимость сопровождения.</p>
@@ -268,6 +275,13 @@
         <fieldset class="payment-group">
           <legend>Как вам удобно оплачивать?</legend>
           <div class="payment-options" id="payment-options"></div>
+        </fieldset>
+        <fieldset class="payment-group">
+          <legend>Стоимость с НДС или без НДС</legend>
+          <div class="vat-options">
+            <label class="payment-option location-option"><input type="radio" name="vat" value="without" checked><span><strong>Без НДС</strong></span></label>
+            <label class="payment-option location-option"><input type="radio" name="vat" value="with"><span><strong>С НДС</strong><small id="vat-rate-label"></small></span></label>
+          </div>
         </fieldset>
       </section>
 
@@ -323,12 +337,12 @@
         <span id="total-label">Итого</span>
         <strong id="total">—</strong>
       </div>
+      <dl id="summary-lines" class="summary-lines" hidden></dl>
       <p id="fee-note" class="hint fee-note" hidden></p>
       <div id="selected-section" hidden>
         <h3 class="selected-title">Выбранные инструменты</h3>
         <ul id="selected-tools" class="selected-list"></ul>
       </div>
-      <dl id="summary-lines" class="summary-lines" hidden></dl>
       <div class="summary-actions">
         <button class="button" id="copy" type="button" disabled>Скопировать расчёт</button>
         <button class="button" id="print" type="button" disabled>Распечатать или сохранить PDF</button>
@@ -411,14 +425,20 @@
       return Math.abs(amount) <= 1000000000 ? asKopecks(amount) : null;
     }
 
-    function calculateQuote(tariff, locationTier, term) {
+    const calculateVat = (amount, rate) => Math.round(amount * (rate ?? 0) / 100);
+
+    function calculateQuote(tariff, locationTier, term, vatPercent) {
       const monthlyRubles = locationTier === 'middle' ? (tariff.min + tariff.max) / 2 : tariff[locationTier];
       const rateLabel = locationLabels[locationTier];
       const monthly = asKopecks(monthlyRubles);
       const discountedMonthly = Math.round(monthly * (100 - term.percent) / 100);
       const subtotal = monthly * term.months;
-      const due = discountedMonthly * term.months;
-      return { rateLabel, monthly, discountedMonthly, subtotal, discount: subtotal - due, due, term };
+      const beforeVat = discountedMonthly * term.months;
+      const vat = calculateVat(beforeVat, vatPercent);
+      return {
+        rateLabel, monthly, discountedMonthly, subtotal, discount: subtotal - beforeVat,
+        beforeVat, vatPercent, vat, due: beforeVat + vat, term
+      };
     }
 
     function projectProfit(average, growthPercent, quote, feePercent) {
@@ -433,8 +453,13 @@
           : average;
         const growth = profitBeforeCfo - average;
         const fee = Math.round(Math.max(0, growth) * feePercent / 100);
-        const fixed = month <= quote.term.months ? quote.discountedMonthly : quote.monthly;
-        const cost = fixed + fee;
+        const prepaid = month <= quote.term.months;
+        const fixed = prepaid ? quote.discountedMonthly : quote.monthly;
+        // Делим НДС с предоплаты по месяцам так, чтобы сумма совпала до копейки.
+        const fixedVat = prepaid
+          ? Math.round(quote.vat * month / quote.term.months) - Math.round(quote.vat * (month - 1) / quote.term.months)
+          : calculateVat(fixed, quote.vatPercent);
+        const cost = fixed + fixedVat + fee + calculateVat(fee, quote.vatPercent);
         const profitAfterCfo = profitBeforeCfo - cost;
         cumulative += growth - cost;
         if (paybackMonth === null && cumulative >= 0 && month >= growthStartMonth) paybackMonth = month;
@@ -493,14 +518,15 @@
       byId('payback').textContent = result.paybackMonth ? paybackText : `За ${forecastSettings.maxMonths} мес. не окупается`;
       byId('forecast-print-inputs').textContent = `Средняя прибыль ${money(average)} в месяц. Прогноз роста ${growthOutput} к предыдущему месяцу с ${firstGrowth.month}-го месяца.`;
       const advanceNote = quote.term.percent ? ` Скидка действует первые ${quote.term.months} мес.` : '';
-      byId('forecast-method').textContent = `Накопленный эффект — прирост к средней прибыли за вычетом оплаты CFO, суммарно с первого месяца. Вознаграждение ${percentText(tariff.growthFeePercent)} начисляется на положительный прирост за месяц к исходной средней прибыли.${advanceNote}`;
+      const vatNote = quote.vatPercent === null ? '' : ' Оплата CFO в прогнозе включает НДС.';
+      byId('forecast-method').textContent = `Накопленный эффект — прирост к средней прибыли за вычетом оплаты CFO, суммарно с первого месяца. Вознаграждение ${percentText(tariff.growthFeePercent)} начисляется на положительный прирост за месяц к исходной средней прибыли.${advanceNote}${vatNote}`;
       projectTable(result);
       return { average, growthOutput, firstGrowth, paybackText };
     }
 
-    const summaryRow = (label, amount, saving = false) => {
+    const summaryRow = (label, value, saving = false) => {
       const row = element('div', '', saving ? 'saving' : '');
-      row.append(element('dt', label), element('dd', saving ? `−${money(amount)}` : money(amount)));
+      row.append(element('dt', label), element('dd', value));
       return row;
     };
 
@@ -513,7 +539,8 @@
       const locationTier = document.querySelector('input[name="locations"]:checked').value;
       const months = Number(document.querySelector('input[name="prepayment"]:checked').value);
       const term = terms.find((option) => option.months === months);
-      const quote = tariff ? calculateQuote(tariff, locationTier, term) : null;
+      const withVat = document.querySelector('input[name="vat"]:checked').value === 'with';
+      const quote = tariff ? calculateQuote(tariff, locationTier, term, withVat ? vatRatePercent : null) : null;
       const advanced = tariff?.growthFeePercent !== undefined;
       const selectedTitles = selected.map((tool) => tool.dataset.title);
 
@@ -534,23 +561,37 @@
 
       const receiptLines = [];
       if (quote) {
-        receiptLines.push([advanced ? 'Фиксированная часть за месяц' : 'Стоимость за месяц', quote.monthly]);
-        if (term.percent) receiptLines.push(
-          [`За ${months} мес. по обычной цене`, quote.subtotal],
-          [`Экономия при предоплате (${percentText(term.percent)})`, quote.discount, true],
-          ['За месяц со скидкой', quote.discountedMonthly]
+        receiptLines.push(
+          ['Период оплаты', months === 1 ? 'Помесячно' : `${months} мес. вперёд`],
+          [advanced ? 'Фиксированная часть за месяц' : 'Стоимость за месяц', money(quote.monthly)]
         );
+        if (term.percent) {
+          receiptLines.push(
+            [`За ${months} мес. до скидки`, money(quote.subtotal)],
+            [`Скидка за предоплату (${percentText(term.percent)})`, `−${money(quote.discount)}`, true],
+            ['За месяц со скидкой', money(quote.discountedMonthly)]
+          );
+        } else {
+          receiptLines.push(['Скидка за предоплату', money(0)]);
+        }
+        if (withVat) {
+          receiptLines.push(['Сумма без НДС', money(quote.beforeVat)], [`НДС (${percentText(quote.vatPercent)})`, money(quote.vat)]);
+        } else {
+          receiptLines.push(['НДС', 'Без НДС']);
+        }
       }
       byId('summary-lines').hidden = !quote;
       byId('summary-lines').replaceChildren(...receiptLines.map((line) => summaryRow(...line)));
-      const totalLabel = quote ? `К оплате за ${months === 1 ? '1 месяц' : `${months} мес.`}` : 'Итого';
+      const vatSummary = withVat ? 'с НДС' : 'без НДС';
+      const totalLabel = quote ? `К оплате за ${months === 1 ? '1 месяц' : `${months} мес.`} · ${vatSummary}` : 'Итого';
       const total = quote ? money(quote.due) : '—';
       byId('total-label').textContent = totalLabel;
       byId('mobile-label').textContent = totalLabel;
       byId('total').textContent = total;
       byId('mobile-amount').textContent = total;
       const fee = advanced ? percentText(tariff.growthFeePercent) : '';
-      const feeNote = advanced ? `Дополнительно — ${fee} от фактического положительного прироста чистой прибыли за месяц к её исходному среднему значению. Вознаграждение рассчитывается по результату месяца.` : '';
+      const feeVatNote = withVat ? ' НДС на вознаграждение начисляется отдельно.' : '';
+      const feeNote = advanced ? `Дополнительно — ${fee} от фактического положительного прироста чистой прибыли за месяц к её исходному среднему значению. Вознаграждение рассчитывается по результату месяца.${feeVatNote}` : '';
       byId('fee-note').hidden = !advanced;
       byId('fee-note').textContent = feeNote;
       byId('mobile-extra').hidden = !advanced;
@@ -558,7 +599,7 @@
       const forecast = renderForecast(tariff, quote);
 
       copyText = quote ? [
-        'Коркина · Финансы и стратегия',
+        'Маюрова Анна «Финансы и стратегия»',
         ...(client ? [`Клиент — ${client}`] : []),
         `Пакет ${tariff.name} — ${tariff.description}`,
         quote.rateLabel,
@@ -567,7 +608,7 @@
         'Выбранные инструменты',
         ...selectedTitles.map((tool) => `• ${tool} — в пакете`),
         '',
-        ...receiptLines.map(([label, amount, saving]) => `${label} — ${saving ? '−' : ''}${money(amount)}`),
+        ...receiptLines.map(([label, value]) => `${label} — ${value}`),
         `${totalLabel} — ${total}`,
         ...(feeNote ? [feeNote] : []),
         ...(forecast ? [
@@ -610,6 +651,7 @@
 
     buildToolGroups();
     buildPayments();
+    byId('vat-rate-label').textContent = percentText(vatRatePercent);
     byId('growth').value = forecastSettings.defaultGrowthPercent;
     byId('forecast-intro').textContent = `Прогноз предполагает рост к предыдущему месяцу с ${forecastSettings.growthStartMonth}-го месяца. Выберите ожидаемый процент, чтобы оценить окупаемость.`;
     byId('calculator').addEventListener('input', updateCalculator);
