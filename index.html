@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eff7ff">
+  <title>Калькулятор CFO на аутсорсе | Коркина</title>
+
+  <!-- ПРАЙС И НАСТРОЙКИ. Суммы в рублях. Чтобы обновить цены, измените числа в этом блоке и сохраните файл. -->
+  <script>
+    const priceList = {
+      start: {
+        name: 'Start', description: 'Контроль ликвидности', min: 60000, max: 100000,
+        group: 'Деньги и платежи', meetings: 'Встречи два раза в месяц',
+        tools: ['Контроль ДДС (движения денежных средств)', 'Платёжный календарь', 'Регулярные рекомендации собственнику']
+      },
+      control: {
+        name: 'Control', description: 'Системный контроль финансов', min: 100000, max: 150000,
+        group: 'Отчётность и бюджетирование', meetings: 'Встречи два раза в месяц',
+        tools: ['Отчёт о прибылях и убытках (ОПиУ)', 'Бюджет доходов и расходов (БДР)', 'Бюджет движения денежных средств (БДДС)', 'Анализ плана и факта']
+      },
+      standard: {
+        name: 'Standard', description: 'Управляемые финансы', min: 150000, max: 200000,
+        group: 'Управленческий учёт', meetings: 'Еженедельные встречи',
+        tools: ['Управленческий учёт', 'Контроль бюджета', 'Управленческий баланс']
+      },
+      advanced: {
+        name: 'Advanced', description: 'Полноценный CFO', min: 200000, max: 300000, growthFeePercent: 10,
+        group: 'Стратегическое управление', meetings: 'Еженедельные встречи',
+        tools: ['Стратегическое финансовое управление', 'Аналитика и сценарии', 'Участие в управленческих решениях', 'Сопровождение роста и масштабирования']
+      }
+    };
+    // Если у пакета указаны min и max, цена для 2–3 точек равна середине диапазона.
+    // Для Advanced скидка применяется к фиксированной части за оплаченные вперёд месяцы.
+    const prepaymentDiscounts = { 1: 0, 3: 5, 6: 10 };
+    const forecastSettings = { growthStartMonth: 3, defaultGrowthPercent: 5, maxMonths: 36 };
+  </script>
+
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #eff7ff;
+      --sky: #dceeff;
+      --blue: #214feb;
+      --blue-dark: #173dce;
+      --ink: #112852;
+      --muted: #455e7b;
+      --line: #cbdff2;
+      --white: #fff;
+      --surface: #f7fbff;
+      --positive: #116146;
+      --negative: #a02e46;
+      --shadow: 0 14px 36px #1a4e8310;
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.5;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--page); }
+    [hidden] { display: none !important; }
+    h1, h2, h3, p, ul, dl { margin: 0; }
+    h2, h3 { line-height: 1.22; }
+    button, input, textarea { font: inherit; }
+    button, a, summary, input[type="checkbox"], input[type="radio"], input[type="range"] { touch-action: manipulation; }
+    :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+    .wrap { width: min(100% - 2rem, 76rem); margin-inline: auto; }
+    .hero { background: linear-gradient(115deg, #f9fcff 0%, #e5f3ff 65%, #d4e9ff 100%); border-bottom: 1px solid var(--line); }
+    .hero-inner { padding-block: 1.4rem 2.65rem; }
+    .brand { display: flex; align-items: center; gap: .7rem; width: fit-content; }
+    .brand-icon { width: 2.25rem; height: 2.25rem; border-radius: .7rem; display: flex; align-items: end; justify-content: center; gap: .15rem; padding: .58rem; background: var(--blue); }
+    .brand-icon i { width: .23rem; border-radius: .15rem; height: .48rem; background: #fff; }
+    .brand-icon i:nth-child(2) { height: .72rem; }
+    .brand-icon i:nth-child(3) { height: .98rem; }
+    .brand strong { display: block; font-size: 1.02rem; line-height: 1.15; }
+    .brand small { display: block; font-size: .78rem; color: var(--muted); }
+    h1 { margin-top: 1.65rem; max-width: 19ch; font-size: clamp(2.2rem, 5vw, 4.15rem); line-height: 1.03; letter-spacing: -.048em; }
+    .hero-note { margin-top: 1rem; max-width: 41rem; color: var(--muted); font-size: 1.04rem; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); gap: 1.25rem; align-items: start; padding-block: 1.25rem 3rem; }
+    .form { display: grid; gap: 1.25rem; min-width: 0; }
+    .panel { background: var(--white); border: 1px solid var(--line); border-radius: 1.25rem; padding: clamp(1rem, 2.4vw, 1.65rem); box-shadow: var(--shadow); min-width: 0; }
+    .panel h2 { font-size: clamp(1.28rem, 2.2vw, 1.55rem); letter-spacing: -.025em; }
+    .hint { color: var(--muted); font-size: .92rem; }
+    .section-hint { margin-top: .4rem; }
+    .tool-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; margin-top: 1.1rem; }
+    fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+    legend { padding: 0; }
+    .tool-group { border: 1px solid var(--line); border-radius: .9rem; background: var(--surface); padding: .55rem .65rem .65rem; }
+    .tool-group legend { color: var(--ink); font-weight: 700; font-size: .9rem; margin-left: .15rem; padding-inline: .25rem; }
+    .tool-cadence { margin: 0 .45rem .35rem; color: var(--muted); font-size: .82rem; }
+    .tool { display: flex; align-items: flex-start; gap: .55rem; border: 1px solid transparent; border-radius: .65rem; padding: .55rem .45rem; min-height: 2.75rem; cursor: pointer; font-size: .94rem; line-height: 1.32; }
+    .tool:hover { background: #eaf4ff; }
+    .tool:has(input:checked) { background: #e3efff; border-color: #b3cbff; color: #123383; }
+    input[type="checkbox"], input[type="radio"] { width: 1.1rem; height: 1.1rem; margin: .08rem 0 0; flex: 0 0 1.1rem; accent-color: var(--blue); }
+    .business-fields { display: grid; gap: .9rem; margin-top: 1rem; }
+    .business-fields > .field { max-width: 26rem; }
+    .field { display: grid; gap: .3rem; align-content: start; font-weight: 700; font-size: .94rem; }
+    .field .hint { font-weight: 400; font-size: .84rem; }
+    .field input, textarea { display: block; width: 100%; min-width: 0; border: 1px solid #a9c6e5; border-radius: .7rem; padding: .62rem .72rem; color: var(--ink); background: var(--white); font-size: 1rem; font-weight: 400; }
+    .payment-group { margin-top: 1.15rem; }
+    .payment-group legend, .location-group legend { margin-bottom: .5rem; font-weight: 700; font-size: .94rem; }
+    .payment-options, .location-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
+    .payment-option { position: relative; display: flex; align-items: flex-start; gap: .45rem; padding: .65rem .55rem; border: 1px solid var(--line); border-radius: .7rem; font-size: .88rem; cursor: pointer; }
+    .payment-option:has(input:checked) { background: #e9f2ff; border-color: #91aef8; }
+    .payment-option strong, .payment-option small { display: block; }
+    .payment-option small { color: var(--muted); font-size: .78rem; }
+    .location-option { min-height: 2.75rem; align-items: center; }
+    .location-option input { margin-top: 0; }
+    .summary { position: sticky; top: 1rem; max-height: calc(100dvh - 2rem); overflow: auto; scroll-margin-top: 1rem; }
+    .package { padding: .85rem 1rem; margin-top: .9rem; border-radius: .85rem; background: var(--sky); }
+    .package strong { display: block; color: #143da0; font-size: 1.3rem; line-height: 1.2; }
+    .package p { margin-top: .28rem; font-size: .91rem; }
+    .package .hint { font-size: .84rem; }
+    .client-name { margin-top: .65rem; overflow-wrap: anywhere; }
+    .selected-title { margin-top: 1rem; font-size: .94rem; }
+    .selected-list { list-style: none; padding: 0; margin-top: .25rem; }
+    .selected-list li { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; padding: .28rem 0; font-size: .9rem; }
+    .selected-list small { flex: none; color: var(--muted); }
+    .summary-lines { margin-top: .75rem; border-top: 1px solid var(--line); padding-top: .55rem; }
+    .summary-lines div { display: flex; justify-content: space-between; gap: .75rem; padding: .25rem 0; font-size: .92rem; }
+    .summary-lines dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .summary-lines .saving { color: var(--positive); }
+    .total-box { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .15rem .7rem; margin-top: .8rem; padding: .75rem .9rem; border-radius: .85rem; background: var(--blue); color: var(--white); }
+    .total-box span { font-size: .87rem; }
+    .total-box strong, .mobile-total strong { font-size: 1.55rem; font-variant-numeric: tabular-nums; line-height: 1.15; }
+    .fee-note { padding-top: .65rem; }
+    .summary-actions { display: grid; gap: .45rem; margin-top: .9rem; }
+    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 2.7rem; text-align: center; text-decoration: none; border-radius: .65rem; border: 1px solid #a9c6e5; background: var(--white); color: var(--blue-dark); font-size: .9rem; font-weight: 700; padding: .45rem .75rem; cursor: pointer; }
+    .button:hover { background: #eaf3ff; }
+    .button:disabled { opacity: .6; cursor: default; }
+    .copy-status { margin-top: .45rem; }
+    .copy-status:empty { display: none; }
+    #copy-fallback { margin-top: .6rem; min-height: 7rem; }
+    .forecast-controls { margin-top: 1rem; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 1rem; }
+    .range-label { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+    .range-label output { color: var(--blue-dark); font-weight: 800; font-size: 1.2rem; white-space: nowrap; }
+    .range { width: 100%; height: 2.25rem; margin: 0; accent-color: var(--blue); cursor: pointer; }
+    .forecast-message { margin-top: .8rem; }
+    .forecast-results { margin-top: 1rem; }
+    .metrics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .55rem; }
+    .metric { padding: .72rem .8rem; background: var(--surface); border: 1px solid var(--line); border-radius: .75rem; }
+    .metric span { display: block; color: var(--muted); font-size: .82rem; }
+    .metric strong { display: block; color: #143da0; font-size: clamp(1.1rem, 2vw, 1.45rem); overflow-wrap: anywhere; }
+    .details { margin-top: .9rem; }
+    .details summary { cursor: pointer; color: var(--blue-dark); font-weight: 700; font-size: .94rem; }
+    .table-scroll { margin-top: .55rem; overflow-x: auto; }
+    .projection { border-collapse: collapse; width: 100%; font-size: .85rem; font-variant-numeric: tabular-nums; }
+    .projection th, .projection td { padding: .47rem .52rem; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+    .projection th:first-child, .projection td:first-child { text-align: left; }
+    .projection thead th { background: var(--sky); white-space: normal; line-height: 1.25; vertical-align: bottom; }
+    .projection tbody tr:nth-child(even) { background: var(--surface); }
+    .projection tr.milestone { background: #dff5ec !important; }
+    .negative { color: var(--negative); }
+    .positive { color: var(--positive); }
+    .method { margin-top: .75rem; }
+    .mobile-total, .print-only { display: none; }
+    @media (max-width: 52rem) {
+      html { scroll-padding-bottom: calc(var(--mobile-bar-height, 6rem + env(safe-area-inset-bottom)) + .75rem); }
+      h1 { overflow-wrap: anywhere; hyphens: auto; }
+      .layout { grid-template-columns: minmax(0, 1fr); padding-bottom: calc(var(--mobile-bar-height, 6rem + env(safe-area-inset-bottom)) + .75rem); }
+      .form { display: contents; }
+      .summary { position: static; max-height: none; overflow: visible; }
+      .total-box { position: static; }
+      .total-box > * { min-width: 0; overflow-wrap: anywhere; }
+      .selected-list li { flex-wrap: wrap; }
+      .selected-list li span { min-width: 0; overflow-wrap: anywhere; }
+      .selected-list small { margin-inline-start: auto; }
+      .summary-lines div { flex-wrap: wrap; gap: .15rem .75rem; }
+      .summary-lines dt { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+      .summary-lines dd { min-width: 0; margin-inline-start: auto; overflow-wrap: anywhere; }
+      .location-options { grid-template-columns: repeat(auto-fit, minmax(min(100%, 5rem), 1fr)); }
+      .metrics { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.25rem), 1fr)); }
+      .tool, .payment-option, .button, .details summary { min-height: 3rem; }
+      .tool span { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+      .details summary { padding-block: .7rem; overflow-wrap: anywhere; }
+      .range-label { flex-wrap: wrap; }
+      .range-label label { min-width: 0; overflow-wrap: anywhere; }
+      .range-label output { margin-inline-start: auto; }
+      .range { height: 3rem; }
+      #forecast { order: 1; }
+      .mobile-total { position: fixed; z-index: 2; inset: auto 0 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem; align-items: center; padding: .62rem max(1rem, env(safe-area-inset-right)) calc(.62rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); background: var(--blue); color: var(--white); box-shadow: 0 -4px 22px #11285226; }
+      .mobile-total > div { flex: 1 1 auto; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+      .mobile-total span, .mobile-total small { display: block; font-size: .78rem; }
+      .mobile-total strong { display: block; padding-block: .13rem; }
+      .mobile-total .button { min-width: 0; max-width: 100%; margin-inline-start: auto; border-color: transparent; overflow-wrap: anywhere; }
+      .mobile-total .button:focus-visible { outline-color: var(--white); }
+    }
+    @media (max-width: 35rem) {
+      .wrap { width: min(100% - 1.25rem, 76rem); }
+      .hero-inner { padding-block: 1rem 1.6rem; }
+      h1 { margin-top: 1.15rem; }
+      .hero-note { font-size: .95rem; }
+      .layout, .form { gap: .75rem; }
+      .layout { padding-top: .75rem; }
+      .tool-groups, .forecast-controls { grid-template-columns: minmax(0, 1fr); gap: .65rem; }
+      .payment-options { grid-template-columns: minmax(0, 1fr); }
+      .payment-option small { display: inline; }
+      .payment-option strong { display: inline; margin-right: .3rem; }
+    }
+    @media screen and (max-width: 35rem) {
+      .table-scroll { overflow: visible; }
+      .projection thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+      .projection, .projection tbody { display: block; }
+      .projection tr { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); gap: .35rem .7rem; margin-bottom: .55rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: .65rem; }
+      .projection th, .projection td { padding: .1rem 0; text-align: left; border: 0; white-space: normal; }
+      .projection th { grid-column: 1 / -1; }
+      .projection td { overflow-wrap: anywhere; }
+      .projection td::before { content: attr(data-mobile-label); display: block; color: var(--muted); font-size: .75rem; line-height: 1.25; }
+      .projection .desktop-month { display: none; }
+      .projection .mobile-month { display: inline; }
+    }
+    .mobile-month { display: none; }
+    @media print {
+      @page { margin: 14mm; }
+      body, .hero { background: #fff; color: #13233b; }
+      .wrap { width: 100%; }
+      .hero-inner { padding: 0 0 .7rem; }
+      h1 { margin-top: .65rem; max-width: none; font-size: 1.7rem; }
+      .hero-note, .input-panel, .forecast-controls, .summary-actions, .copy-status, #copy-fallback, .mobile-total, .forecast-message, .details summary, #forecast:has(#forecast-results[hidden]) { display: none !important; }
+      .layout { display: flex; flex-direction: column; padding: .55rem 0 0; gap: .7rem; }
+      .layout > * { width: 100%; }
+      .form { display: block; }
+      .summary { order: -1; position: static; max-height: none; overflow: visible; }
+      .panel { box-shadow: none; padding: .7rem .85rem; }
+      .total-box { position: static; background: #fff; color: #13233b; border: 1px solid #9dbde0; }
+      .print-only { display: block; }
+      .table-scroll { overflow: visible; }
+      .projection { font-size: 9pt; }
+      .projection th, .projection td { padding: .28rem .35rem; }
+      .projection tr, .metrics, .total-box { break-inside: avoid; }
+      .projection thead { display: table-header-group; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-inner">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div><strong>Коркина</strong><small>Финансы и стратегия</small></div>
+      </div>
+      <h1>Калькулятор стоимости CFO на аутсорсе</h1>
+      <p class="hero-note">Выберите финансовые инструменты для вашего бизнеса. Калькулятор подберёт пакет и покажет стоимость сопровождения.</p>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <form class="form" id="calculator" autocomplete="off">
+      <section class="panel input-panel" aria-labelledby="tools-heading">
+        <h2 id="tools-heading">Какие инструменты вам нужны?</h2>
+        <p class="hint section-hint">Выберите один или несколько. Каждый пакет включает инструменты предыдущих пакетов.</p>
+        <div id="tool-groups" class="tool-groups"></div>
+      </section>
+
+      <section class="panel input-panel" aria-labelledby="business-heading">
+        <h2 id="business-heading">Ваш бизнес и оплата</h2>
+        <div class="business-fields">
+          <fieldset class="location-group">
+            <legend>Количество точек продаж</legend>
+            <div class="location-options">
+              <label class="payment-option location-option"><input type="radio" name="locations" value="min" checked><span>1 точка</span></label>
+              <label class="payment-option location-option"><input type="radio" name="locations" value="middle"><span>2–3 точки</span></label>
+              <label class="payment-option location-option"><input type="radio" name="locations" value="max"><span>4 и более</span></label>
+            </div>
+          </fieldset>
+          <label class="field" for="client-name">Как к вам обращаться
+            <input id="client-name" type="text" maxlength="100" placeholder="Ваше имя" autocomplete="given-name">
+          </label>
+        </div>
+        <fieldset class="payment-group">
+          <legend>Как вам удобно оплачивать?</legend>
+          <div class="payment-options" id="payment-options"></div>
+        </fieldset>
+      </section>
+
+      <section class="panel" id="forecast" aria-labelledby="forecast-heading" hidden>
+        <h2 id="forecast-heading">Окупаемость Advanced</h2>
+        <p class="hint section-hint" id="forecast-intro"></p>
+        <div class="forecast-controls">
+          <label class="field" for="average-profit">Средняя чистая прибыль за месяц
+            <input id="average-profit" type="text" inputmode="decimal" maxlength="24" placeholder="Например, 1 000 000" aria-describedby="profit-help">
+            <span class="hint" id="profit-help">Среднее за последние 6 месяцев, в рублях.</span>
+          </label>
+          <div>
+            <div class="range-label">
+              <label class="field" for="growth">Ожидаемый рост в месяц</label>
+              <output id="growth-output" for="growth"></output>
+            </div>
+            <input class="range" id="growth" type="range" min="0" max="30" step="1" aria-describedby="forecast-intro">
+          </div>
+        </div>
+        <p class="hint forecast-message" id="forecast-message" role="status"></p>
+        <div class="forecast-results" id="forecast-results" hidden>
+          <p class="hint print-only" id="forecast-print-inputs"></p>
+          <div class="metrics">
+            <div class="metric"><span id="first-growth-label"></span><strong id="first-growth-profit"></strong></div>
+            <div class="metric"><span>Окупаемость CFO</span><strong id="payback"></strong></div>
+          </div>
+          <details class="details" id="forecast-details" open>
+            <summary>Помесячный прогноз</summary>
+            <div class="table-scroll" tabindex="0" aria-label="Таблица помесячного прогноза">
+              <table class="projection" role="table" aria-label="Помесячный прогноз окупаемости CFO">
+                <thead>
+                  <tr><th scope="col">Месяц</th><th scope="col">Прирост к средней прибыли</th><th scope="col">Оплата CFO</th><th scope="col">Чистая прибыль после CFO</th><th scope="col">Накопленный эффект</th></tr>
+                </thead>
+                <tbody id="forecast-rows"></tbody>
+              </table>
+            </div>
+          </details>
+          <p class="hint method" id="forecast-method"></p>
+        </div>
+      </section>
+    </form>
+
+    <aside class="panel summary" id="summary" aria-labelledby="summary-heading">
+      <h2 id="summary-heading">Ваш расчёт</h2>
+      <p id="summary-client" class="hint client-name" hidden></p>
+      <div class="package" aria-live="polite">
+        <strong id="package-name">Пакет сопровождения</strong>
+        <p id="package-description">Отметьте нужные инструменты.</p>
+        <p id="package-tier" class="hint" hidden></p>
+        <p id="package-meetings" class="hint" hidden></p>
+      </div>
+      <div class="total-box" aria-live="polite" aria-atomic="true">
+        <span id="total-label">Итого</span>
+        <strong id="total">—</strong>
+      </div>
+      <p id="fee-note" class="hint fee-note" hidden></p>
+      <div id="selected-section" hidden>
+        <h3 class="selected-title">Выбранные инструменты</h3>
+        <ul id="selected-tools" class="selected-list"></ul>
+      </div>
+      <dl id="summary-lines" class="summary-lines" hidden></dl>
+      <div class="summary-actions">
+        <button class="button" id="copy" type="button" disabled>Скопировать расчёт</button>
+        <button class="button" id="print" type="button" disabled>Распечатать или сохранить PDF</button>
+      </div>
+      <p class="hint copy-status" id="copy-status" role="status"></p>
+      <textarea id="copy-fallback" aria-label="Текст расчёта для копирования" readonly hidden></textarea>
+    </aside>
+  </main>
+
+  <div class="mobile-total" aria-live="polite" aria-atomic="true">
+    <div><span id="mobile-label">Итого</span><strong id="mobile-amount">—</strong><small id="mobile-extra" hidden></small></div>
+    <a class="button" href="#summary">К расчёту</a>
+  </div>
+
+  <script>
+    'use strict';
+
+    const packages = Object.entries(priceList);
+    const terms = Object.entries(prepaymentDiscounts).map(([months, percent]) => ({ months: Number(months), percent }));
+    const locationLabels = {
+      min: '1 точка продаж · нижняя цена',
+      middle: '2–3 точки продаж · средняя цена',
+      max: '4 и более точек продаж · верхняя цена'
+    };
+    const amountFormat = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const percentFormat = new Intl.NumberFormat('ru-RU', { style: 'percent', maximumFractionDigits: 2 });
+    const money = (kopecks) => amountFormat.format(kopecks / 100);
+    const percentText = (percent) => percentFormat.format(percent / 100);
+    const asKopecks = (rubles) => Math.round(rubles * 100);
+    const byId = (id) => document.getElementById(id);
+    const forecastColumns = Array.from(document.querySelectorAll('.projection thead th')).slice(1).map((heading) => heading.textContent);
+    const element = (tag, content, className) => {
+      const node = document.createElement(tag);
+      if (content) node.textContent = content;
+      if (className) node.className = className;
+      return node;
+    };
+
+    function buildToolGroups() {
+      const groups = packages.map(([key, tariff], tier) => {
+        const group = element('fieldset', '', 'tool-group');
+        group.append(element('legend', tariff.group), element('p', tariff.meetings, 'tool-cadence'));
+        tariff.tools.forEach((tool, index) => {
+          const label = element('label', '', 'tool');
+          const input = element('input');
+          input.type = 'checkbox';
+          input.name = 'tool';
+          input.value = `${key}-${index}`;
+          input.dataset.tier = tier;
+          input.dataset.title = tool;
+          label.append(input, element('span', tool));
+          group.append(label);
+        });
+        return group;
+      });
+      byId('tool-groups').replaceChildren(...groups);
+    }
+
+    function buildPayments() {
+      const paymentOptions = terms.map(({ months, percent }) => {
+        const label = element('label', '', 'payment-option');
+        const radio = element('input');
+        radio.type = 'radio';
+        radio.name = 'prepayment';
+        radio.value = months;
+        radio.checked = months === 1;
+        const text = element('span');
+        text.append(element('strong', months === 1 ? 'Помесячно' : `За ${months} мес. вперёд`));
+        if (percent) text.append(element('small', `Скидка ${percentText(percent)} на тариф`));
+        label.append(radio, text);
+        return label;
+      });
+      byId('payment-options').replaceChildren(...paymentOptions);
+    }
+
+    function readAverageProfit(raw) {
+      const normalized = raw.replace(/\s/g, '').replace('−', '-').replace(',', '.');
+      if (!/^-?\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
+      const amount = Number(normalized);
+      return Math.abs(amount) <= 1000000000 ? asKopecks(amount) : null;
+    }
+
+    function calculateQuote(tariff, locationTier, term) {
+      const monthlyRubles = locationTier === 'middle' ? (tariff.min + tariff.max) / 2 : tariff[locationTier];
+      const rateLabel = locationLabels[locationTier];
+      const monthly = asKopecks(monthlyRubles);
+      const discountedMonthly = Math.round(monthly * (100 - term.percent) / 100);
+      const subtotal = monthly * term.months;
+      const due = discountedMonthly * term.months;
+      return { rateLabel, monthly, discountedMonthly, subtotal, discount: subtotal - due, due, term };
+    }
+
+    function projectProfit(average, growthPercent, quote, feePercent) {
+      const { growthStartMonth, maxMonths } = forecastSettings;
+      const rows = [];
+      let previousProfit = average;
+      let cumulative = 0;
+      let paybackMonth = null;
+      for (let month = 1; month <= maxMonths; month++) {
+        const profitBeforeCfo = month >= growthStartMonth
+          ? Math.round(previousProfit * (100 + growthPercent) / 100)
+          : average;
+        const growth = profitBeforeCfo - average;
+        const fee = Math.round(Math.max(0, growth) * feePercent / 100);
+        const fixed = month <= quote.term.months ? quote.discountedMonthly : quote.monthly;
+        const cost = fixed + fee;
+        const profitAfterCfo = profitBeforeCfo - cost;
+        cumulative += growth - cost;
+        if (paybackMonth === null && cumulative >= 0 && month >= growthStartMonth) paybackMonth = month;
+        rows.push({ month, growth, cost, profitAfterCfo, cumulative });
+        previousProfit = profitBeforeCfo;
+      }
+      return { rows, paybackMonth };
+    }
+
+    function projectTable(result) {
+      const visibleMonths = Math.max(12, result.paybackMonth ?? 12);
+      const rows = result.rows.slice(0, visibleMonths).map((month) => {
+        const row = element('tr');
+        if (month.month === result.paybackMonth) row.classList.add('milestone');
+        const label = element('th');
+        label.scope = 'row';
+        label.append(element('span', String(month.month), 'desktop-month'), element('span', `${month.month}-й месяц`, 'mobile-month'));
+        row.append(label);
+        const amounts = [month.growth, month.cost, month.profitAfterCfo, month.cumulative];
+        amounts.forEach((amount, index) => {
+          const style = index >= 2 ? (amount < 0 ? 'negative' : 'positive') : '';
+          const cell = element('td', money(amount), style);
+          cell.dataset.mobileLabel = forecastColumns[index];
+          row.append(cell);
+        });
+        return row;
+      });
+      byId('forecast-rows').replaceChildren(...rows);
+    }
+
+    function renderForecast(tariff, quote) {
+      const panel = byId('forecast');
+      panel.hidden = tariff?.growthFeePercent === undefined;
+      if (panel.hidden) return null;
+
+      const rawProfit = byId('average-profit').value;
+      const average = readAverageProfit(rawProfit);
+      const growth = Number(byId('growth').value);
+      const growthOutput = percentText(growth);
+      byId('growth-output').value = growthOutput;
+      byId('growth').setAttribute('aria-valuetext', growthOutput);
+      const valid = average !== null && average > 0;
+      byId('forecast-results').hidden = !valid;
+      const message = byId('forecast-message');
+      message.textContent = valid ? '' : rawProfit.trim()
+        ? 'Для прогноза введите положительную среднюю чистую прибыль до 1 000 000 000 ₽.'
+        : 'Укажите среднюю чистую прибыль, чтобы увидеть прогноз.';
+      byId('average-profit').setAttribute('aria-invalid', String(!valid && !!rawProfit.trim()));
+      if (!valid) return null;
+
+      const result = projectProfit(average, growth, quote, tariff.growthFeePercent);
+      const firstGrowth = result.rows[forecastSettings.growthStartMonth - 1];
+      const paybackText = result.paybackMonth ? `${result.paybackMonth}-й месяц` : `Свыше ${forecastSettings.maxMonths} мес.`;
+      byId('first-growth-label').textContent = `Прибыль после CFO в ${firstGrowth.month}-м месяце`;
+      byId('first-growth-profit').textContent = money(firstGrowth.profitAfterCfo);
+      byId('payback').textContent = result.paybackMonth ? paybackText : `За ${forecastSettings.maxMonths} мес. не окупается`;
+      byId('forecast-print-inputs').textContent = `Средняя прибыль ${money(average)} в месяц. Прогноз роста ${growthOutput} к предыдущему месяцу с ${firstGrowth.month}-го месяца.`;
+      const advanceNote = quote.term.percent ? ` Скидка действует первые ${quote.term.months} мес.` : '';
+      byId('forecast-method').textContent = `Накопленный эффект — прирост к средней прибыли за вычетом оплаты CFO, суммарно с первого месяца. Вознаграждение ${percentText(tariff.growthFeePercent)} начисляется на положительный прирост за месяц к исходной средней прибыли.${advanceNote}`;
+      projectTable(result);
+      return { average, growthOutput, firstGrowth, paybackText };
+    }
+
+    const summaryRow = (label, amount, saving = false) => {
+      const row = element('div', '', saving ? 'saving' : '');
+      row.append(element('dt', label), element('dd', saving ? `−${money(amount)}` : money(amount)));
+      return row;
+    };
+
+    let copyText = '';
+    function updateCalculator() {
+      const selected = Array.from(document.querySelectorAll('input[name="tool"]:checked'));
+      const tier = selected.length ? Math.max(...selected.map((tool) => Number(tool.dataset.tier))) : -1;
+      const tariff = packages[tier]?.[1];
+      const client = byId('client-name').value.trim();
+      const locationTier = document.querySelector('input[name="locations"]:checked').value;
+      const months = Number(document.querySelector('input[name="prepayment"]:checked').value);
+      const term = terms.find((option) => option.months === months);
+      const quote = tariff ? calculateQuote(tariff, locationTier, term) : null;
+      const advanced = tariff?.growthFeePercent !== undefined;
+      const selectedTitles = selected.map((tool) => tool.dataset.title);
+
+      byId('summary-client').hidden = !client;
+      byId('summary-client').textContent = client ? `Клиент — ${client}` : '';
+      byId('package-name').textContent = tariff?.name ?? 'Пакет сопровождения';
+      byId('package-description').textContent = tariff?.description ?? 'Отметьте нужные инструменты.';
+      byId('package-tier').hidden = !tariff;
+      byId('package-tier').textContent = quote?.rateLabel ?? '';
+      byId('package-meetings').hidden = !tariff;
+      byId('package-meetings').textContent = tariff?.meetings ?? '';
+      byId('selected-section').hidden = !selectedTitles.length;
+      byId('selected-tools').replaceChildren(...selectedTitles.map((title) => {
+        const row = element('li');
+        row.append(element('span', title), element('small', 'в пакете'));
+        return row;
+      }));
+
+      const receiptLines = [];
+      if (quote) {
+        receiptLines.push([advanced ? 'Фиксированная часть за месяц' : 'Стоимость за месяц', quote.monthly]);
+        if (term.percent) receiptLines.push(
+          [`За ${months} мес. по обычной цене`, quote.subtotal],
+          [`Экономия при предоплате (${percentText(term.percent)})`, quote.discount, true],
+          ['За месяц со скидкой', quote.discountedMonthly]
+        );
+      }
+      byId('summary-lines').hidden = !quote;
+      byId('summary-lines').replaceChildren(...receiptLines.map((line) => summaryRow(...line)));
+      const totalLabel = quote ? `К оплате за ${months === 1 ? '1 месяц' : `${months} мес.`}` : 'Итого';
+      const total = quote ? money(quote.due) : '—';
+      byId('total-label').textContent = totalLabel;
+      byId('mobile-label').textContent = totalLabel;
+      byId('total').textContent = total;
+      byId('mobile-amount').textContent = total;
+      const fee = advanced ? percentText(tariff.growthFeePercent) : '';
+      const feeNote = advanced ? `Дополнительно — ${fee} от фактического положительного прироста чистой прибыли за месяц к её исходному среднему значению. Вознаграждение рассчитывается по результату месяца.` : '';
+      byId('fee-note').hidden = !advanced;
+      byId('fee-note').textContent = feeNote;
+      byId('mobile-extra').hidden = !advanced;
+      byId('mobile-extra').textContent = advanced ? `+ ${fee} от прироста прибыли` : '';
+      const forecast = renderForecast(tariff, quote);
+
+      copyText = quote ? [
+        'Коркина · Финансы и стратегия',
+        ...(client ? [`Клиент — ${client}`] : []),
+        `Пакет ${tariff.name} — ${tariff.description}`,
+        quote.rateLabel,
+        tariff.meetings,
+        '',
+        'Выбранные инструменты',
+        ...selectedTitles.map((tool) => `• ${tool} — в пакете`),
+        '',
+        ...receiptLines.map(([label, amount, saving]) => `${label} — ${saving ? '−' : ''}${money(amount)}`),
+        `${totalLabel} — ${total}`,
+        ...(feeNote ? [feeNote] : []),
+        ...(forecast ? [
+          '',
+          `Прогноз при росте ${forecast.growthOutput} к предыдущему месяцу с ${forecast.firstGrowth.month}-го месяца`,
+          `Средняя чистая прибыль за последние 6 месяцев — ${money(forecast.average)} в месяц`,
+          `Чистая прибыль в ${forecast.firstGrowth.month}-м месяце после CFO — ${money(forecast.firstGrowth.profitAfterCfo)}`,
+          `Окупаемость CFO — ${forecast.paybackText}`
+        ] : [])
+      ].join('\n') : '';
+      byId('copy').disabled = !quote;
+      byId('print').disabled = !quote;
+      byId('copy-status').textContent = '';
+      byId('copy-fallback').hidden = true;
+    }
+
+    async function copyCalculation() {
+      if (!copyText) return;
+      const fallback = byId('copy-fallback');
+      const status = byId('copy-status');
+      fallback.hidden = true;
+      try {
+        await navigator.clipboard.writeText(copyText);
+        status.textContent = 'Расчёт скопирован.';
+        return;
+      } catch {
+        fallback.value = copyText;
+        fallback.hidden = false;
+        fallback.focus();
+        fallback.select();
+      }
+      let copied = false;
+      try { copied = document.execCommand('copy'); } catch { /* Текст остаётся выделенным. */ }
+      if (copied) {
+        fallback.hidden = true;
+        byId('copy').focus();
+      }
+      status.textContent = copied ? 'Расчёт скопирован.' : 'Текст выделен. Скопируйте его из поля ниже.';
+    }
+
+    buildToolGroups();
+    buildPayments();
+    byId('growth').value = forecastSettings.defaultGrowthPercent;
+    byId('forecast-intro').textContent = `Прогноз предполагает рост к предыдущему месяцу с ${forecastSettings.growthStartMonth}-го месяца. Выберите ожидаемый процент, чтобы оценить окупаемость.`;
+    byId('calculator').addEventListener('input', updateCalculator);
+    byId('calculator').addEventListener('submit', (event) => event.preventDefault());
+    byId('copy').addEventListener('click', copyCalculation);
+    byId('print').addEventListener('click', () => window.print());
+    const details = byId('forecast-details');
+    let detailsWasOpen = true;
+    window.addEventListener('beforeprint', () => { detailsWasOpen = details.open; details.open = true; });
+    window.addEventListener('afterprint', () => { details.open = detailsWasOpen; });
+    const mobileBar = document.querySelector('.mobile-total');
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(() => {
+        const height = mobileBar.getBoundingClientRect().height;
+        document.documentElement.style.setProperty('--mobile-bar-height', `${height}px`);
+      }).observe(mobileBar);
+    }
+    updateCalculator();
+  </script>
+</body>
+</html>
