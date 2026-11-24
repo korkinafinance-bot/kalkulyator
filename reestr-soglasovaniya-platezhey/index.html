@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Согласование платежей</title>
+  <style>
+    :root {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: #222a36;
+      background: #f7f8fa;
+      font-synthesis: none;
+      --muted: #515e70;
+      --line: #dfe4eb;
+      --control-line: #b9c2cf;
+      --surface: #f4f6f8;
+      --blue: #254fb6;
+      --blue-hover: #1e4197;
+      --blue-tint: #edf3ff;
+      --paper: #fff;
+      --red: #9c3328;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; min-width: 0; }
+    h1, h2, h3, p, dl, dd { margin: 0; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button, input, select, textarea { max-width: 100%; }
+    :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .shell { width: min(100% - 64px, 1280px); margin-inline: auto; }
+    .top { background: var(--paper); }
+    .top .shell { display: flex; align-items: center; justify-content: space-between; min-height: 72px; gap: 20px; padding-block: 12px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 700; }
+    .mark { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 9px; background: var(--blue-tint); color: var(--blue); }
+    .mark::before { content: ""; width: 15px; height: 8px; border-bottom: 2px solid currentColor; border-left: 2px solid currentColor; transform: translateY(-2px) rotate(-45deg); }
+    .role-box { display: flex; align-items: center; gap: 12px; }
+    .role-label { color: var(--muted); font-size: 13px; }
+    .roles { display: flex; gap: 3px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
+    .roles button { color: var(--muted); border: 1px solid transparent; border-radius: 6px; background: transparent; min-height: 40px; padding: 0 11px; font-size: 13px; font-weight: 600; }
+    .roles button:hover { background: #e9edf3; }
+    .roles button[aria-pressed="true"] { background: var(--paper); border-color: var(--line); color: var(--blue); }
+    .nav-bar { background: var(--paper); border-bottom: 1px solid var(--line); }
+    .nav-bar .shell { display: flex; gap: 28px; }
+    .nav-bar button { min-height: 49px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: none; font-size: 14px; font-weight: 650; }
+    .nav-bar button[aria-pressed="true"] { border-bottom-color: var(--blue); color: var(--blue); }
+    main.shell { padding-top: 30px; }
+    .heading { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
+    h1 { margin-top: 5px; font-size: clamp(27px, 4vw, 36px); line-height: 1.15; letter-spacing: -.03em; }
+    h2 { font-size: 19px; line-height: 1.25; letter-spacing: -.012em; }
+    h3 { font-size: 15px; line-height: 1.35; }
+    .muted { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .heading .muted { font-size: 14px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 15px; min-height: 44px; border: 1px solid var(--control-line); border-radius: 8px; background: var(--paper); color: inherit; font-size: 14px; font-weight: 650; line-height: 1.25; }
+    .button:hover { background: var(--surface); border-color: #939fb0; }
+    .primary { background: var(--blue); color: white; border-color: var(--blue); }
+    .primary:hover { background: var(--blue-hover); border-color: var(--blue-hover); }
+    .danger { color: var(--red); border-color: #eac5bf; }
+    .danger:hover { color: #8d2116; background: #fff1ee; border-color: #dca299; }
+    .plus { font-size: 20px; line-height: 15px; }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin-bottom: 20px; }
+    .metric { background: var(--paper); color: inherit; text-align: left; padding: 15px 17px 14px; border: 1px solid var(--line); border-radius: 11px; min-width: 0; }
+    .metric:hover { border-color: var(--control-line); background: #fbfcfd; }
+    .metric-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: var(--muted); }
+    .dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #5371ad; }
+    .dot.review { background: #ba7a18; }
+    .dot.ready { background: #258562; }
+    .metric strong { display: block; font-size: 29px; line-height: 1.1; letter-spacing: -.04em; margin-top: 7px; }
+    .metric-note { min-height: 18px; margin-top: 4px; display: block; overflow-wrap: anywhere; }
+    .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+    .filters { display: grid; grid-template-columns: minmax(180px, 1.25fr) minmax(145px, .75fr) minmax(160px, 1fr); gap: 12px; padding: 16px 18px 12px; }
+    label { display: grid; gap: 5px; min-width: 0; color: #3b4757; font-size: 13px; font-weight: 650; }
+    input, select, textarea { display: block; width: 100%; min-width: 0; min-height: 44px; padding: 9px 11px; border: 1px solid var(--control-line); border-radius: 8px; color: #222a36; background: var(--paper); font-size: 15px; font-weight: 400; }
+    input::placeholder, textarea::placeholder { color: #606b7b; }
+    textarea { min-height: 84px; resize: vertical; }
+    .table-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 14px; padding: 0 18px 12px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { text-align: left; font-size: 12px; font-weight: 700; color: var(--muted); background: var(--surface); white-space: nowrap; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); }
+    th:first-child, td:first-child { padding-left: 18px; }
+    th:last-child, td:last-child { padding-right: 18px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tr[data-request] { cursor: pointer; }
+    tr[data-request]:hover { background: #f8fafc; }
+    .request-cell, .due-cell, .status-cell, .amount-cell { white-space: nowrap; }
+    .request-cell strong { font-size: 13px; color: var(--muted); }
+    td .muted, .late { display: block; margin-top: 2px; font-size: 12px; }
+    .recipient { padding: 0; border: 0; background: none; color: var(--blue); text-align: left; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+    .recipient:hover { text-decoration: underline; }
+    .article-cell, .due-cell { font-size: 13px; color: #3b4757; }
+    .amount-cell { text-align: right; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .arrow-cell { width: 24px; color: var(--muted); font-size: 20px; line-height: 1; }
+    .late { color: var(--red); font-weight: 650; }
+    .pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 20px; background: var(--blue-tint); color: #244a9a; font-size: 12px; line-height: 1.25; font-weight: 650; white-space: nowrap; }
+    .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .pill.review { background: #fbf1df; color: #704a17; }
+    .pill.approved { background: #e8f3ed; color: #235a46; }
+    .pill.rejected { background: #f9ece9; color: #8a3730; }
+    .pill.paid { background: #edf0f3; color: #4a5666; }
+    .empty { padding: 27px 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding-block: 21px 26px; }
+    .text-button { padding: 8px 2px; min-height: 44px; border: 0; background: none; color: var(--blue); font-size: 13px; font-weight: 650; }
+    .text-button:hover { text-decoration: underline; }
+    .week-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 17px; margin-bottom: 15px; }
+    .week-controls { display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .week-controls strong { display: grid; place-items: center; min-height: 44px; padding: 6px 12px; border-radius: 8px; background: var(--surface); font-size: 15px; text-align: center; }
+    .square { min-width: 44px; padding: 6px; font-size: 20px; }
+    .week-total { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+    .week-total strong { font-size: 24px; letter-spacing: -.025em; }
+    .week-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 15px; align-items: start; }
+    .section-title { padding: 15px 17px; border-bottom: 1px solid var(--line); }
+    .day { border-bottom: 1px solid var(--line); }
+    .day:last-child { border-bottom: 0; }
+    .day-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; padding: 10px 17px; background: var(--surface); color: #3b4757; font-size: 14px; }
+    .week-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 17px; min-height: 51px; font-size: 14px; }
+    .week-row + .week-row { border-top: 1px solid var(--line); }
+    .week-row > div { min-width: 0; overflow-wrap: anywhere; }
+    .week-row strong { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .week-row button { min-height: 28px; }
+    .notice { padding: 11px 13px; border-radius: 8px; background: #fbf1df; color: #704a17; line-height: 1.45; font-size: 14px; }
+    #storage-warning { margin-bottom: 15px; }
+    dialog { width: min(100% - 32px, 600px); max-height: calc(100% - 32px); padding: 0; border: 1px solid var(--line); border-radius: 13px; color: inherit; background: var(--paper); box-shadow: 0 14px 44px #202a3926; }
+    dialog::backdrop { background: #242a344d; }
+    .dialog-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 20px; background: var(--paper); border-bottom: 1px solid var(--line); }
+    .dialog-body { padding: 19px 20px 21px; }
+    .dialog-close { font-size: 24px; line-height: 1; }
+    .detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .detail-heading h3 { font-size: 22px; overflow-wrap: anywhere; }
+    .detail-amount { margin-top: 6px; font-size: 25px; letter-spacing: -.025em; font-weight: 750; overflow-wrap: anywhere; }
+    .detail-grid, .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 15px; }
+    .detail-grid > div { min-width: 0; }
+    .detail-grid dt, .budget dt { color: var(--muted); font-size: 12px; }
+    .detail-grid dd, .budget dd { margin-top: 4px; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+    .full { grid-column: 1 / -1; }
+    .detail-note { white-space: pre-wrap; }
+    .budget, .actions, .history { margin-top: 18px; }
+    .budget { padding: 13px; border: 1px solid var(--line); background: var(--surface); border-radius: 9px; }
+    .budget dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .budget .after { margin-top: 9px; color: var(--muted); font-size: 13px; }
+    .budget .notice { margin-top: 10px; }
+    .actions, .history { border-top: 1px solid var(--line); padding-top: 14px; }
+    .actions > p { margin-top: 6px; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+    .history ol { list-style: none; padding: 0; margin: 9px 0 0; }
+    .history li { position: relative; padding: 0 0 13px 15px; border-left: 1px solid var(--line); margin-left: 4px; }
+    .history li:last-child { padding-bottom: 0; border-left-color: transparent; }
+    .history li::before { content: ""; position: absolute; top: 5px; left: -5px; width: 9px; height: 9px; background: #5371ad; border-radius: 50%; }
+    .event-action { font-size: 14px; font-weight: 700; }
+    .event-comment { margin-top: 4px; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .error { color: var(--red); font-size: 13px; margin-top: 7px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media (max-width: 900px) {
+      .shell { width: calc(100% - 32px); }
+      th, td { padding-inline: 7px; }
+    }
+    @media (max-width: 760px) {
+      .top .shell { align-items: flex-start; flex-direction: column; gap: 9px; padding-block: 13px 12px; }
+      .brand { font-size: 17px; }
+      .mark { width: 33px; height: 33px; border-radius: 9px; }
+      .role-box { width: 100%; }
+      .roles { flex: 1; }
+      .roles button { flex: 1; padding-inline: 4px; min-height: 44px; }
+      .nav-bar .shell { gap: 19px; }
+      .nav-bar button { min-height: 47px; }
+      main.shell { padding-top: 21px; }
+      .heading { margin-bottom: 14px; align-items: flex-start; }
+      .metrics { gap: 7px; margin-bottom: 14px; }
+      .metric { padding: 10px 8px; }
+      .metric strong { margin-top: 5px; font-size: 24px; }
+      .metric-label { gap: 4px; align-items: baseline; font-size: 12px; line-height: 1.23; }
+      .metric-note { font-size: 11px; line-height: 1.3; }
+      .dot { width: 6px; height: 6px; }
+      .list-panel { background: none; border: 0; }
+      .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; background: var(--paper); border: 1px solid var(--line); border-radius: 11px; padding: 10px; }
+      .filters label:first-child { grid-column: 1 / -1; }
+      input, select, textarea { font-size: 16px; }
+      .table-note { padding: 9px 0; }
+      table, tbody { display: block; }
+      thead { display: none; }
+      tbody { display: grid; gap: 8px; }
+      tbody tr { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "request status" "recipient amount" "article article" "due arrow"; gap: 6px 9px; align-items: center; }
+      tbody td, tbody td:first-child, tbody td:last-child { padding: 0; border: 0; }
+      .request-cell { grid-area: request; }
+      .request-cell .muted { display: inline; margin-left: 4px; }
+      .recipient-cell { grid-area: recipient; }
+      .recipient { min-height: 28px; }
+      .amount-cell { grid-area: amount; }
+      .article-cell { grid-area: article; }
+      .due-cell { grid-area: due; }
+      .due-cell::before { content: "Оплатить до "; }
+      .due-cell .late { display: inline; margin-left: 5px; white-space: normal; }
+      .status-cell { grid-area: status; justify-self: end; }
+      .arrow-cell { grid-area: arrow; justify-self: end; text-align: right; }
+      .week-grid { grid-template-columns: minmax(0, 1fr); }
+      .week-toolbar { padding: 10px; }
+      .week-controls { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; flex: 0 0 100%; gap: 8px; }
+      .week-controls strong { padding-inline: 6px; }
+    }
+    @media (max-width: 440px) {
+      .shell { width: calc(100% - 24px); }
+      .role-box { gap: 6px; }
+      .role-label { font-size: 12px; }
+      .roles button { font-size: 12px; }
+      .heading > .primary { width: 100%; }
+      dialog { width: calc(100% - 16px); max-height: calc(100% - 16px); border-radius: 13px; }
+      .dialog-head, .dialog-body { padding-inline: 13px; }
+      .detail-heading { flex-wrap: wrap; }
+      .form-grid { grid-template-columns: minmax(0, 1fr); }
+      .day-head, .week-row, .section-title { padding-inline: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="shell">
+      <div class="brand"><span class="mark" aria-hidden="true"></span>Согласование платежей</div>
+      <div class="role-box">
+        <span class="role-label" id="role-label">Демо-роль</span>
+        <div class="roles" role="group" aria-labelledby="role-label">
+          <button type="button" data-role="Сотрудник">Сотрудник</button>
+          <button type="button" data-role="Руководитель">Руководитель</button>
+          <button type="button" data-role="Бухгалтер">Бухгалтер</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <nav class="nav-bar" aria-label="Разделы">
+    <div class="shell">
+      <button type="button" data-view="list">Заявки</button>
+      <button type="button" data-view="week">К оплате на неделю</button>
+    </div>
+  </nav>
+  <main class="shell">
+    <p id="storage-warning" class="notice" role="status" hidden>Браузер не дал сохранить изменения. Они будут доступны до закрытия или обновления страницы.</p>
+    <div id="view"></div>
+    <div class="footer"><p class="muted">Демонстрационные данные</p><button type="button" class="text-button" data-action="reset">Вернуть пример</button></div>
+  </main>
+  <p id="announcement" class="sr-only" role="status"></p>
+  <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+
+  <script id="payment-csv" type="text/plain">
+Номер;Дата заявки;Сотрудник;Получатель;Сумма, руб.;Статья;Срок оплаты;Файл счёта;Статус;Комментарий
+З-301;2025-02-03;Сотрудник 1;ООО «Поставщик 01»;11500;Канцтовары и хозтовары;2025-02-12;демо-счёт-301.pdf;Новая;
+З-302;2025-02-04;Сотрудник 2;ООО «Поставщик 02»;172000;Закупка товара;2025-02-10;демо-счёт-302.pdf;На согласовании;
+З-303;2025-02-04;Сотрудник 3;ИП 1;27800;Логистика и доставка;2025-02-15;демо-счёт-303.pdf;На согласовании;
+З-304;2025-02-05;Сотрудник 4;ООО «Поставщик 03»;132000;Аренда офиса;2025-02-08;демо-счёт-304.pdf;Согласована;Согласовано в демо.
+З-305;2025-02-06;Сотрудник 1;ООО «Поставщик 04»;53500;Маркетинг и реклама;2025-02-09;демо-счёт-305.pdf;Согласована;Согласовано в демо.
+З-306;2025-02-06;Сотрудник 2;ООО «Поставщик 05»;7600;Связь и интернет;2025-02-11;демо-счёт-306.pdf;Оплачена;Оплата отмечена в демо.
+З-307;2025-02-07;Сотрудник 3;ООО «Поставщик 06»;18800;Программы и подписки;2025-02-16;демо-счёт-307.pdf;Отклонена;Уточните сумму счёта.
+З-308;2025-02-08;Сотрудник 4;ООО «Поставщик 02»;264000;Закупка товара;2025-02-13;демо-счёт-308.pdf;Новая;
+З-309;2025-02-08;Сотрудник 1;ИП 1;15900;Логистика и доставка;2025-02-15;демо-счёт-309.pdf;Новая;
+З-310;2025-02-09;Сотрудник 2;ООО «Поставщик 07»;32500;Обучение сотрудников;2025-02-13;демо-счёт-310.pdf;На согласовании;
+З-311;2025-02-09;Сотрудник 3;ООО «Поставщик 04»;29500;Маркетинг и реклама;2025-02-11;демо-счёт-311.pdf;На согласовании;
+З-312;2025-02-10;Сотрудник 4;ООО «Поставщик 08»;12900;Канцтовары и хозтовары;2025-02-20;демо-счёт-312.pdf;Согласована;Согласовано в демо.
+З-313;2025-02-10;Сотрудник 1;ООО «Поставщик 06»;8500;Программы и подписки;2025-02-20;демо-счёт-313.pdf;Согласована;Согласовано в демо.
+З-314;2025-02-11;Сотрудник 2;ООО «Поставщик 09»;97600;Закупка товара;2025-02-16;демо-счёт-314.pdf;Оплачена;Оплата отмечена в демо.
+  </script>
+  <script id="expense-csv" type="text/plain">
+Статья;Лимит в месяц, руб.;Кто согласует
+Аренда офиса;155000;Руководитель
+Закупка товара;720000;Руководитель
+Маркетинг и реклама;125000;Руководитель
+Связь и интернет;23000;Бухгалтер
+Канцтовары и хозтовары;18000;Бухгалтер
+Логистика и доставка;95000;Руководитель
+Программы и подписки;36000;Бухгалтер
+Обучение сотрудников;48000;Руководитель
+  </script>
+  <script>
+    "use strict";
+
+    const storeKey = "payment-approval-public-demo-v1";
+    const statuses = {
+      new: "Новая", review: "На согласовании", approved: "Согласована",
+      rejected: "Отклонена", paid: "Оплачена",
+    };
+    const demoEvents = {
+      review: "Отправлена на согласование", approved: "Согласована",
+      rejected: "Отклонена", paid: "Оплачена",
+    };
+    const $ = (selector, parent = document) => parent.querySelector(selector);
+    const dayMs = 86_400_000;
+    const calendar = new Intl.DateTimeFormat("ru-RU", { dateStyle: "long", timeZone: "UTC" });
+    const shortDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", timeZone: "UTC" });
+    const longDay = new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+    const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" });
+    const eventDate = new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" });
+    const rubles = new Intl.NumberFormat("ru-RU", {
+      style: "currency", currency: "RUB", minimumFractionDigits: 0, maximumFractionDigits: 2,
+    });
+    const dialog = $("#dialog");
+    const view = $("#view");
+
+    function escapeHtml(value) {
+      const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+      return String(value).replace(/[&<>"']/g, character => entities[character]);
+    }
+
+    function today() {
+      const date = new Date();
+      return [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+        .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0")).join("-");
+    }
+
+    function dateValue(day) {
+      return Date.parse(day + "T00:00:00Z");
+    }
+
+    function shift(day, amount) {
+      return new Date(dateValue(day) + amount * dayMs).toISOString().slice(0, 10);
+    }
+
+    function monday(day) {
+      const weekday = new Date(dateValue(day)).getUTCDay();
+      return shift(day, -((weekday + 6) % 7));
+    }
+
+    function money(kopecks) {
+      return rubles.format(kopecks / 100);
+    }
+
+    function sum(items) {
+      return items.reduce((total, item) => total + item.amount, 0);
+    }
+
+    function requestCount(count) {
+      const last = count % 10;
+      const lastTwo = count % 100;
+      if (last === 1 && lastTwo !== 11) return count + " заявка";
+      if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return count + " заявки";
+      return count + " заявок";
+    }
+
+    function embeddedRows(id) {
+      // The embedded source files have one record per line and no quoted fields.
+      return $(id).textContent.trim().split(/\r?\n/).slice(1).map(line => line.split(";"));
+    }
+
+    const categories = new Map(embeddedRows("#expense-csv").map(([name, limit, approver]) => [
+      name, { limit: Number(limit) * 100, approver },
+    ]));
+
+    function sample() {
+      const rows = embeddedRows("#payment-csv");
+      const latest = rows.map(row => row[1]).sort().at(-1);
+      const offset = (dateValue(today()) - dateValue(latest)) / dayMs;
+      return rows.map(([id, date, employee, recipient, amount, category, due, invoice, sourceStatus, comment]) => {
+        const created = shift(date, offset);
+        const status = Object.keys(statuses).find(key => statuses[key] === sourceStatus);
+        const history = [{ action: "Создана", actor: employee, date: created }];
+        if (status !== "new") history.push({ action: demoEvents[status], comment, fromSample: true });
+        return {
+          id, created, employee, recipient, amount: Number(amount) * 100, category,
+          due: shift(due, offset), invoice, status, comment: status === "new" ? comment : "", history,
+        };
+      });
+    }
+
+    function initialState() {
+      return {
+        role: "Сотрудник", view: "list", week: null,
+        filters: { status: "", category: "", query: "" }, requests: sample(),
+      };
+    }
+
+    function loadState() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(storeKey));
+        if (stored && Array.isArray(stored.requests) && stored.filters) return stored;
+      } catch {
+        // First load and invalid stored data fall back to the example.
+      }
+      return initialState();
+    }
+
+    function save() {
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(state));
+        $("#storage-warning").hidden = true;
+      } catch {
+        $("#storage-warning").hidden = false;
+      }
+    }
+
+    let state = loadState();
+    save();
+
+    function allowedToDecide(request) {
+      return request.status === "review" && categories.get(request.category).approver === state.role;
+    }
+
+    function overdue(request) {
+      return request.due < today() && request.status !== "paid" && request.status !== "rejected";
+    }
+
+    function compareDue(a, b) {
+      return a.due.localeCompare(b.due) || a.created.localeCompare(b.created) || a.id.localeCompare(b.id, "ru", { numeric: true });
+    }
+
+    function badge(status) {
+      return `<span class="pill ${status}">${statuses[status]}</span>`;
+    }
+
+    function options(values, selected) {
+      return values.map(([value, label]) => `<option value="${escapeHtml(value)}"${value === selected ? " selected" : ""}>${escapeHtml(label)}</option>`).join("");
+    }
+
+    function announce(message) {
+      $("#announcement").textContent = message;
+    }
+
+    function render() {
+      document.querySelectorAll("[data-role]").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.role === state.role));
+      });
+      document.querySelectorAll("[data-view]").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.view === state.view));
+      });
+      if (state.view === "week") renderWeek();
+      else renderList();
+    }
+
+    function metric(label, status, tone, count, note) {
+      return `<button class="metric" type="button" data-metric="${status}">
+        <span class="metric-label"><span class="dot ${tone}" aria-hidden="true"></span>${label}</span>
+        <strong>${count}</strong><span class="muted metric-note">${note}</span>
+      </button>`;
+    }
+
+    function renderList() {
+      const review = state.requests.filter(request => request.status === "review");
+      const ready = state.requests.filter(request => request.status === "approved");
+      const overdueCount = ready.filter(overdue).length;
+      const { status, category, query } = state.filters;
+      view.innerHTML = `
+        <div class="heading">
+          <div><p class="muted"><time datetime="${today()}">${calendar.format(dateValue(today()))}</time></p><h1>Заявки на оплату</h1></div>
+          ${state.role === "Сотрудник" ? '<button type="button" class="button primary" data-action="new"><span class="plus" aria-hidden="true">+</span>Новая заявка</button>' : ""}
+        </div>
+        <div class="metrics">
+          ${metric("Все заявки", "", "", state.requests.length, money(sum(state.requests)))}
+          ${metric("На согласовании", "review", "review", review.length, money(sum(review)))}
+          ${metric("К оплате", "approved", "ready", ready.length, overdueCount ? "Просрочено: " + overdueCount : money(sum(ready)))}
+        </div>
+        <section class="panel list-panel" aria-label="Реестр заявок">
+          <div class="filters">
+            <label>Поиск по получателю<input type="search" data-filter="query" placeholder="Название получателя" value="${escapeHtml(query)}"></label>
+            <label><span id="status-filter-label">Статус</span><select data-filter="status" aria-labelledby="status-filter-label">${options([["", "Все статусы"], ...Object.entries(statuses)], status)}</select></label>
+            <label><span id="category-filter-label">Статья</span><select data-filter="category" aria-labelledby="category-filter-label">${options([["", "Все статьи"], ...Array.from(categories.keys(), name => [name, name])], category)}</select></label>
+          </div>
+          <div class="table-note"><p id="list-count" class="muted" aria-live="polite"></p>
+            ${state.role === "Бухгалтер" ? '<p class="muted">Вверху очереди — согласованные заявки с самым ранним сроком.</p>' : ""}
+          </div>
+          <div id="results"></div>
+        </section>`;
+      renderResults();
+    }
+
+    function renderResults() {
+      const { status, category, query } = state.filters;
+      const needle = query.trim().toLocaleLowerCase("ru-RU");
+      const requests = state.requests.filter(request =>
+        (!status || request.status === status) && (!category || request.category === category) &&
+        (!needle || request.recipient.toLocaleLowerCase("ru-RU").includes(needle)));
+
+      requests.sort((a, b) => {
+        if (state.role === "Бухгалтер" && (a.status === "approved" || b.status === "approved")) {
+          return Number(b.status === "approved") - Number(a.status === "approved") || compareDue(a, b);
+        }
+        return b.created.localeCompare(a.created) || b.id.localeCompare(a.id, "ru", { numeric: true });
+      });
+      $("#list-count").textContent = requestCount(requests.length);
+      $("#results").innerHTML = requests.length ? `
+        <table aria-label="Заявки на оплату">
+          <thead><tr><th scope="col">Заявка</th><th scope="col">Получатель</th><th scope="col" class="amount-cell">Сумма</th><th scope="col">Статья</th><th scope="col">Срок оплаты</th><th scope="col">Статус</th><th scope="col"><span class="sr-only">Карточка</span></th></tr></thead>
+          <tbody>${requests.map(request => `
+            <tr data-request="${escapeHtml(request.id)}">
+              <td class="request-cell"><strong>${escapeHtml(request.id)}</strong><time class="muted" datetime="${request.created}">${shortDate.format(dateValue(request.created))}</time></td>
+              <td class="recipient-cell"><button type="button" class="recipient" aria-label="${escapeHtml(request.recipient + ", заявка " + request.id)}">${escapeHtml(request.recipient)}</button><span class="muted">${escapeHtml(request.employee)}</span></td>
+              <td class="amount-cell">${money(request.amount)}</td>
+              <td class="article-cell">${escapeHtml(request.category)}</td>
+              <td class="due-cell"><time datetime="${request.due}">${shortDate.format(dateValue(request.due))}</time>${overdue(request) ? '<span class="late">Просрочено</span>' : ""}</td>
+              <td class="status-cell">${badge(request.status)}</td>
+              <td class="arrow-cell" aria-hidden="true">›</td>
+            </tr>`).join("")}</tbody>
+        </table>` : '<p class="empty">По выбранным фильтрам заявок нет.</p>';
+    }
+
+    function defaultWeek(approved) {
+      const current = monday(today());
+      const weeks = approved.map(request => monday(request.due)).sort();
+      return weeks.find(week => week >= current) ?? weeks.at(-1) ?? current;
+    }
+
+    function groupBy(items, keyFor) {
+      const groups = new Map();
+      for (const item of items) {
+        const key = keyFor(item);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      }
+      return [...groups];
+    }
+
+    function renderWeek() {
+      const approved = state.requests.filter(request => request.status === "approved");
+      const week = state.week ?? defaultWeek(approved);
+      const end = shift(week, 6);
+      const items = approved.filter(request => request.due >= week && request.due <= end).sort(compareDue);
+      const days = groupBy(items, request => request.due);
+      const articles = groupBy(items, request => request.category).sort(([a], [b]) => a.localeCompare(b, "ru"));
+      const span = `${shortDate.format(dateValue(week))} — ${shortDate.format(dateValue(end))} ${end.slice(0, 4)}`;
+      view.innerHTML = `
+        <div class="heading"><div><p class="muted">Согласованные заявки по сроку оплаты</p><h1>К оплате на неделю</h1></div></div>
+        <div class="panel week-toolbar">
+          <div class="week-controls">
+            <button class="button square" type="button" data-week="${shift(week, -7)}" aria-label="Предыдущая неделя">‹</button>
+            <strong aria-live="polite">${span}</strong>
+            <button class="button square" type="button" data-week="${shift(week, 7)}" aria-label="Следующая неделя">›</button>
+          </div>
+          <div class="week-total"><span class="muted">Итого · ${requestCount(items.length)}</span><strong>${money(sum(items))}</strong></div>
+          ${state.week !== null ? '<button type="button" class="text-button" data-action="auto-week">Ближайшая неделя с оплатами</button>' : ""}
+        </div>
+        ${items.length ? `
+          <div class="week-grid">
+            <section class="panel">
+              <h2 class="section-title">По дням</h2>
+              ${days.map(([day, requests]) => `<section class="day">
+                <div class="day-head"><h3>${longDay.format(dateValue(day))}</h3><strong>${money(sum(requests))}</strong></div>
+                ${requests.map(request => `<div class="week-row" data-request="${escapeHtml(request.id)}">
+                  <div><button type="button" class="recipient">${escapeHtml(request.recipient)}</button><p class="muted">${escapeHtml(request.id)} · ${escapeHtml(request.category)}</p></div>
+                  <strong>${money(request.amount)}</strong>
+                </div>`).join("")}
+              </section>`).join("")}
+            </section>
+            <section class="panel">
+              <h2 class="section-title">По статьям</h2>
+              ${articles.map(([name, requests]) => `<div class="week-row"><div>${escapeHtml(name)}<p class="muted">${requestCount(requests.length)}</p></div><strong>${money(sum(requests))}</strong></div>`).join("")}
+            </section>
+          </div>` : '<div class="panel"><p class="empty">На эту неделю нет согласованных заявок к оплате.</p></div>'}`;
+    }
+
+    let dialogTrigger;
+    function showDialog(title, body, requestId = "") {
+      if (!dialog.open) dialogTrigger = document.activeElement;
+      dialog.dataset.requestId = requestId;
+      dialog.innerHTML = `
+        <div class="dialog-head"><h2 id="dialog-title" tabindex="-1">${title}</h2><button class="button square dialog-close" type="button" data-action="close" aria-label="Закрыть">×</button></div>
+        <div class="dialog-body">${body}</div>`;
+      if (!dialog.open) dialog.showModal();
+      else $("#dialog-title", dialog).focus();
+      dialog.scrollTop = 0;
+    }
+
+    dialog.addEventListener("close", () => {
+      if (dialogTrigger?.isConnected) dialogTrigger.focus();
+    });
+
+    function newRequest() {
+      showDialog("Новая заявка", `
+        <form id="new-form" novalidate>
+          <div class="form-grid">
+            <label class="full">Получатель<input name="recipient" required maxlength="160" autofocus></label>
+            <label>Сумма, ₽<input name="amount" inputmode="decimal" required placeholder="Например, 12 500"></label>
+            <label>Срок оплаты<input name="due" type="date" required></label>
+            <label class="full"><span id="category-field-label">Статья</span><select name="category" aria-labelledby="category-field-label" required>${options([["", "Выберите статью"], ...Array.from(categories.keys(), name => [name, name])], "")}</select></label>
+            <label class="full">Имя файла счёта<input name="invoice" maxlength="200" placeholder="Например, демо-счёт-315.pdf"></label>
+            <label class="full">Комментарий<textarea name="comment" maxlength="2000"></textarea></label>
+          </div>
+          <p class="error" data-error role="alert" hidden></p>
+          <div class="buttons"><button type="submit" class="button primary">Сохранить заявку</button><button type="button" class="button" data-action="close">Отмена</button></div>
+        </form>`);
+    }
+
+    function detail(label, content, full = false) {
+      return `<div${full ? ' class="full"' : ""}><dt>${label}</dt><dd>${content}</dd></div>`;
+    }
+
+    function budget(request) {
+      const month = request.created.slice(0, 7);
+      const limit = categories.get(request.category).limit;
+      const spent = sum(state.requests.filter(item => item.category === request.category &&
+        item.created.startsWith(month + "-") && (item.status === "approved" || item.status === "paid")));
+      const remaining = limit - spent;
+      const after = remaining - request.amount;
+      return `<section class="budget">
+        <h3>Лимит по статье за ${monthName.format(dateValue(month + "-01"))}</h3>
+        <dl>${detail("Лимит", money(limit))}${detail("Согласовано и оплачено", money(spent))}${detail("Остаток", money(remaining))}</dl>
+        ${request.status === "review" ? `<p class="after">Остаток после согласования: <strong>${money(after)}</strong></p>` : ""}
+        ${request.status === "review" && after < 0 ? `<p class="notice">Согласование превысит лимит на ${money(-after)}.</p>` : ""}
+      </section>`;
+    }
+
+    function requestActions(request) {
+      if (request.status === "new" && state.role === "Сотрудник") {
+        return '<section class="actions"><button type="button" class="button primary" data-action="submit-request">Отправить на согласование</button></section>';
+      }
+      if (allowedToDecide(request)) {
+        return `<form class="actions" id="decision-form" novalidate>
+          <label>Комментарий к решению<textarea name="decision" maxlength="2000" required></textarea></label>
+          <p class="error" data-error role="alert" hidden></p>
+          <div class="buttons"><button type="submit" class="button primary" value="approved">Согласовать</button><button type="submit" class="button danger" value="rejected">Отклонить</button></div>
+        </form>`;
+      }
+      if (request.status === "approved" && state.role === "Бухгалтер") {
+        return '<section class="actions"><button type="button" class="button primary" data-action="pay">Отметить «Оплачено»</button></section>';
+      }
+      return "";
+    }
+
+    function eventInfo(event) {
+      if (event.fromSample) return "Пример из CSV · автор решения и дата не указаны";
+      const when = event.timestamp ? eventDate.format(new Date(event.timestamp)) : calendar.format(dateValue(event.date));
+      return escapeHtml(event.actor + " · " + when);
+    }
+
+    function showRequest(request) {
+      const approver = categories.get(request.category).approver;
+      showDialog(`Заявка ${escapeHtml(request.id)}`, `
+        <div class="detail-heading"><div><h3>${escapeHtml(request.recipient)}</h3><p class="detail-amount">${money(request.amount)}</p></div>${badge(request.status)}</div>
+        <dl class="detail-grid">
+          ${detail("Статья", escapeHtml(request.category))}
+          ${detail("Согласующий", escapeHtml(approver))}
+          ${detail("Срок оплаты", calendar.format(dateValue(request.due)) + (overdue(request) ? ' <span class="late">Просрочено</span>' : ""))}
+          ${detail("Дата заявки", calendar.format(dateValue(request.created)))}
+          ${detail("Сотрудник", escapeHtml(request.employee))}
+          ${detail("Файл счёта", request.invoice ? escapeHtml(request.invoice) : "—")}
+          ${request.comment ? detail("Комментарий сотрудника", `<span class="detail-note">${escapeHtml(request.comment)}</span>`, true) : ""}
+        </dl>
+        ${state.role === "Руководитель" || state.role === approver ? budget(request) : ""}
+        ${requestActions(request)}
+        <section class="history">
+          <h3>История решений</h3>
+          <ol>${request.history.map(event => `<li>
+            <p class="event-action">${escapeHtml(event.action)}</p>
+            <p class="muted">${eventInfo(event)}</p>
+            ${event.comment ? `<p class="event-comment">${escapeHtml(event.comment)}</p>` : ""}
+          </li>`).join("")}</ol>
+        </section>`, request.id);
+    }
+
+    function updateRequest(request, status, action, comment = "") {
+      request.status = status;
+      request.history.push({ action, actor: state.role, timestamp: new Date().toISOString(), comment });
+      save();
+      render();
+      showRequest(request);
+      announce(request.id + " · " + action);
+    }
+
+    function showError(form, message, field) {
+      const error = $("[data-error]", form);
+      error.textContent = message;
+      error.hidden = false;
+      form.elements[field]?.focus();
+    }
+
+    function inputAmount(value) {
+      const compact = value.replace(/[ \u00a0\u202f]/g, "");
+      if (!/^\d+(?:[,.]\d{1,2})?$/.test(compact)) return NaN;
+      const [whole, fraction = ""] = compact.split(/[,.]/);
+      return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+    }
+
+    function createRequest(form) {
+      if (state.role !== "Сотрудник") return;
+      const values = new FormData(form);
+      const recipient = values.get("recipient").trim();
+      const amount = inputAmount(values.get("amount"));
+      const due = values.get("due");
+      const category = values.get("category");
+      if (!recipient) return showError(form, "Укажите получателя.", "recipient");
+      if (!Number.isSafeInteger(amount) || amount <= 0) return showError(form, "Введите сумму больше нуля. Укажите до двух знаков после запятой.", "amount");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || !Number.isFinite(dateValue(due))) return showError(form, "Укажите срок оплаты.", "due");
+      if (!categories.has(category)) return showError(form, "Выберите статью.", "category");
+      const number = Math.max(100, ...state.requests.map(request => Number(request.id.slice(2)))) + 1;
+      const request = {
+        id: "З-" + number, created: today(), employee: state.role, recipient, amount, category, due,
+        invoice: values.get("invoice").trim(), comment: values.get("comment").trim(), status: "new",
+        history: [{ action: "Создана", actor: state.role, timestamp: new Date().toISOString() }],
+      };
+      state.requests.push(request);
+      state.filters = { status: "", category: "", query: "" };
+      save();
+      render();
+      showRequest(request);
+      announce("Создана заявка " + request.id);
+    }
+
+    function currentRequest() {
+      return state.requests.find(request => request.id === dialog.dataset.requestId);
+    }
+
+    dialog.addEventListener("submit", event => {
+      event.preventDefault();
+      const form = event.target;
+      if (form.id === "new-form") return createRequest(form);
+      if (form.id === "decision-form") {
+        const request = currentRequest();
+        const decision = event.submitter?.value;
+        if (!request || !allowedToDecide(request) || !["approved", "rejected"].includes(decision)) return;
+        const comment = form.elements.decision.value.trim();
+        if (!comment) return showError(form, "Добавьте комментарий к решению.", "decision");
+        updateRequest(request, decision, demoEvents[decision], comment);
+      }
+    });
+
+    function refreshFilters(control) {
+      const key = control.dataset.filter;
+      if (state.filters[key] === control.value) return;
+      state.filters[key] = control.value;
+      save();
+      renderResults();
+    }
+
+    view.addEventListener("input", event => {
+      if (event.target.matches("input[data-filter]")) refreshFilters(event.target);
+    });
+    view.addEventListener("change", event => {
+      if (event.target.matches("[data-filter]")) refreshFilters(event.target);
+    });
+
+    document.addEventListener("click", event => {
+      const target = event.target.closest("button, tr[data-request]");
+      if (!target) return;
+      const { role, view: section, metric: status, week, action } = target.dataset;
+      const requestRow = target.closest("[data-request]");
+      if (requestRow) {
+        showRequest(state.requests.find(request => request.id === requestRow.dataset.request));
+        return;
+      }
+      if (role) state.role = role;
+      else if (section) state.view = section;
+      else if (status !== undefined) {
+        state.filters = { status, category: "", query: "" };
+      } else if (week) state.week = week;
+      else if (action === "auto-week") state.week = null;
+      else {
+        handleAction(action);
+        return;
+      }
+      save();
+      render();
+      if (status !== undefined) view.querySelector(`[data-metric="${status}"]`)?.focus();
+      if (week) view.querySelector(`[aria-label="${target.getAttribute("aria-label")}"]`)?.focus();
+    });
+
+    function handleAction(action) {
+      const request = currentRequest();
+      switch (action) {
+        case "new":
+          if (state.role === "Сотрудник") newRequest();
+          break;
+        case "close":
+          dialog.close();
+          break;
+        case "submit-request":
+          if (request?.status === "new" && state.role === "Сотрудник") {
+            updateRequest(request, "review", "Отправлена на согласование");
+          }
+          break;
+        case "pay":
+          if (request?.status === "approved" && state.role === "Бухгалтер") {
+            updateRequest(request, "paid", "Оплачено");
+          }
+          break;
+        case "reset":
+          showDialog("Вернуть пример", `<p>Исходные заявки заменят текущий список. Созданные заявки и решения в этом браузере будут удалены.</p>
+            <div class="buttons"><button class="button danger" type="button" data-action="confirm-reset">Вернуть пример</button><button class="button" type="button" data-action="close">Отмена</button></div>`);
+          break;
+        case "confirm-reset":
+          state = { ...initialState(), role: state.role };
+          dialog.close();
+          save();
+          render();
+          announce("Пример восстановлен.");
+          break;
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
